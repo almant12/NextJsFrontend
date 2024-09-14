@@ -33,6 +33,8 @@ export default function Navbar() {
     const pusher = initializePusher();
     var channel = pusher.subscribe('articles');
     channel.bind('NewArticle',function(article:Article){
+      const audio = new Audio('new-notification-7-210334.mp3');
+      audio.play();
       setNotification((prevNotification)=> [article,...prevNotification])
     })
     return () => {
