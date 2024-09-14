@@ -3,15 +3,19 @@
 import Link from 'next/link';
 import { axiosClient } from '@/utils/axiosClient';
 import { useState, useEffect, MouseEvent } from 'react';
-import echo from '@/hooks/echo';
+import initializePusher from '@/hooks/pusher';
 
+interface Article {
+  id: number;
+  title: string;
+}
 
 export default function Navbar() {
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [isNotificationDropdownOpen, setIsNotificationDropdownOpen] = useState(false);
   const [categories, setCategories] = useState([]);
-
-
+  const [notifications,setNotification] = useState<Article[]>([]);
+  
   useEffect(() => {
     const fetchCategory = async () => {
       try {
@@ -25,11 +29,19 @@ export default function Navbar() {
     fetchCategory();
   }, []);
 
-  useEffect(()=>{
-    echo.channel('articles').listen('NewArticle',(event:string)=>{
-      console.log(event);
+  useEffect(() => {
+    const pusher = initializePusher();
+    var channel = pusher.subscribe('articles');
+    channel.bind('NewArticle',function(article:Article){
+      setNotification((prevNotification)=> [article,...prevNotification])
     })
-  })
+    return () => {
+      channel.unbind_all();
+      channel.unsubscribe();
+    };
+}, []);
+
+
 
   const toggleCategoryDropdown = () => {
     setIsCategoryDropdownOpen(!isCategoryDropdownOpen);
@@ -130,13 +142,19 @@ export default function Navbar() {
               </button>
               <div id="notificationDropdownMenu" className={`z-10 ${isNotificationDropdownOpen ? 'block' : 'hidden'} font-normal bg-white divide-y divide-gray-100 rounded-lg shadow w-44 dark:bg-gray-700 dark:divide-gray-600 absolute right-0`}>
                 <ul className="py-2 text-sm text-gray-700 dark:text-gray-400" aria-labelledby="notificationDropdown">
-                  {/* Replace with your notification items */}
-                  <li>
-                    <Link href="#" className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">Notification 1</Link>
-                  </li>
-                  <li>
-                    <Link href="#" className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">Notification 2</Link>
-                  </li>
+                {notifications.length === 0 ? (
+            <li>No new notifications</li>
+          ) : (
+            notifications.map((notification) => (
+              <li key={notification.id}>
+                <Link href={'/article/'+notification.id} className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">
+                  <div>
+                    <h3 className="font-semibold">{notification.title}</h3>
+                  </div>
+                </Link>
+              </li>
+            ))
+          )}
                 </ul>
               </div>
             </li>
